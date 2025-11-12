@@ -1,0 +1,6 @@
+# Dev stuff
+.direnv
+.pre-commit-config.yaml
+
+# Artifacts
+/target
