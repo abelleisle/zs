@@ -22,10 +22,7 @@ pub fn truncate_path(path: &Path) -> String {
     };
 
     // Split path by / and filter out empty parts
-    let parts: Vec<&str> = path_str
-        .split('/')
-        .filter(|p| !p.is_empty())
-        .collect();
+    let parts: Vec<&str> = path_str.split('/').filter(|p| !p.is_empty()).collect();
 
     let num_parts = parts.len();
 
@@ -59,8 +56,9 @@ pub fn truncate_path(path: &Path) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::path::PathBuf;
+
+    use super::*;
 
     #[test]
     fn test_truncate_short_path() {
@@ -76,15 +74,17 @@ mod tests {
         assert_eq!(result, "~/d/w/p/myrepo/src");
     }
 
-
     #[test]
     fn test_truncate_home_path() {
         let path_str = if let Some(home) = dirs::home_dir() {
-            format!("{}/documents/work/projects/myrepo/src", home.to_string_lossy())
+            format!(
+                "{}/documents/work/projects/myrepo/src",
+                home.to_string_lossy()
+            )
         } else {
             return;
         };
-        let path =  PathBuf::from(path_str);
+        let path = PathBuf::from(path_str);
         let result = truncate_path(&path);
         assert_eq!(result, "~/d/w/p/myrepo/src");
     }
