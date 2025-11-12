@@ -9,6 +9,9 @@ use serde::{Deserialize, Serialize};
 pub struct Repo {
     pub path: PathBuf,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub workspace_hook: Option<String>,
+
     #[serde(flatten)]
     pub repo: RepoType,
 }
@@ -84,6 +87,47 @@ impl Repo {
         match &self.repo {
             RepoType::Git(git_repo) => {
                 git_repo.delete_worktree(&primary_path, worktree_path)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    // Execute workspace hook if defined
+    pub fn execute_workspace_hook(&self, workspace_path: &std::path::Path) -> Result<()> {
+        if let Some(hook) = &self.workspace_hook {
+            println!("\n=== Executing workspace hook ===");
+            println!("Working directory: {}", workspace_path.display());
+            println!("\n{}", hook);
+            println!("\n================================\n");
+
+            let mut cmd = std::process::Command::new("sh");
+            cmd.arg("-c")
+                .arg(hook)
+                .current_dir(workspace_path);
+
+            // Use status() instead of output() to inherit stdio and show live output
+            let status = cmd.status()
+                .context("Failed to execute workspace hook")?;
+
+            if !status.success() {
+                anyhow::bail!("Workspace hook failed with exit code: {:?}", status.code());
+            }
+
+            println!("\n=== Workspace hook completed successfully ===\n");
+        }
+
+        Ok(())
+    }
+
+    // Update the repository to the latest version
+    pub fn update(&self) -> Result<()> {
+        let primary_path = self.path.join("primary");
+
+        // Delegate to the specific repo type
+        match &self.repo {
+            RepoType::Git(git_repo) => {
+                git_repo.update(&primary_path)?;
             }
         }
 

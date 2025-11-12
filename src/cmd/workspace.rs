@@ -34,6 +34,9 @@ pub fn run(config: &Config) -> Result<()> {
     // Clone the repo if it doesn't exist
     selected_repo.ensure_cloned()?;
 
+    // Update the repo to get the latest changes
+    selected_repo.update()?;
+
     // Prompt for workspace name
     let workspace_name = Text::new("Workspace name:").prompt()?;
 
@@ -57,6 +60,9 @@ pub fn run(config: &Config) -> Result<()> {
     // Create the worktree
     selected_repo.create_worktree(&branch_name, &workspace_path)?;
     println!("Created worktree at: {}", workspace_path.display());
+
+    // Execute workspace hook if defined
+    selected_repo.execute_workspace_hook(&workspace_path)?;
 
     // Generate session ID from truncated path
     let session_id = truncate_path(&workspace_path);

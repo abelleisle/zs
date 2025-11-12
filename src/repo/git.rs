@@ -1,6 +1,7 @@
 use std::process::Command;
 
 use anyhow::{Context, Result, bail};
+use inquire::Confirm;
 use serde::{Deserialize, Serialize};
 
 fn default_true() -> bool {
@@ -131,10 +132,67 @@ impl GitRepo {
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);
-            bail!("Git worktree remove failed: {}", stderr);
+            println!("Failed to remove worktree: {}", stderr);
+
+            // Ask user if they want to force remove
+            let force = Confirm::new("Would you like to force remove the worktree?")
+                .with_default(false)
+                .prompt()?;
+
+            if !force {
+                bail!("Worktree removal cancelled");
+            }
+
+            // Try again with --force flag
+            println!("Force removing worktree...");
+            let mut force_cmd = Command::new("git");
+            force_cmd
+                .arg("-C")
+                .arg(repo_path)
+                .arg("worktree")
+                .arg("remove")
+                .arg("--force")
+                .arg(worktree_path);
+
+            let force_output = force_cmd
+                .output()
+                .context("Failed to execute git worktree remove --force command")?;
+
+            if !force_output.status.success() {
+                let force_stderr = String::from_utf8_lossy(&force_output.stderr);
+                bail!("Git worktree remove --force failed: {}", force_stderr);
+            }
         }
 
         println!("Successfully deleted worktree");
+
+        Ok(())
+    }
+
+    pub fn update(&self, repo_path: &std::path::Path) -> Result<()> {
+        println!("Updating repository at: {}", repo_path.display());
+
+        let mut cmd = Command::new("git");
+        cmd.arg("-C")
+            .arg(repo_path)
+            .arg("pull");
+
+        // Execute the pull command
+        let output = cmd
+            .output()
+            .context("Failed to execute git pull command")?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            bail!("Git pull failed: {}", stderr);
+        }
+
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        if !stdout.trim().is_empty() {
+            println!("{}", stdout.trim());
+        }
+
+        println!("Repository updated successfully");
 
         Ok(())
     }
