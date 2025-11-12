@@ -19,6 +19,15 @@ impl Multiplexer {
     }
 
     fn open_zellij(&self, session: &Session) -> Result<()> {
+        // Check if we're already inside a Zellij session
+        if std::env::var("ZELLIJ").is_ok() {
+            anyhow::bail!(
+                "Already inside a Zellij session. Cannot nest sessions.\n\
+                 Target session path: {}",
+                session.path.display()
+            );
+        }
+
         // Convert session ID to Zellij-compatible session name
         let session_name = Self::zellij_session_name(&session.id);
 
