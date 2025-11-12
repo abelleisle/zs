@@ -1,4 +1,14 @@
 use clap::{Parser, Subcommand};
+use anyhow::Result;
+
+mod cmd;
+mod config;
+mod multiplexer;
+mod repo;
+mod session;
+mod util;
+
+use config::Config;
 
 #[derive(Parser)]
 #[command(name = "zs")]
@@ -16,15 +26,21 @@ enum Commands {
     Workspace,
 }
 
-fn main() {
+fn main() -> Result<()> {
     let cli = Cli::parse();
+    let config = Config::load()?;
+
+    println!("Loaded config from: {}", Config::config_path()?.display());
+    println!("Found {} repos", config.repos.len());
 
     match cli.command {
         Some(Commands::Session) | None => {
-            println!("Session command executed!");
+            cmd::session::run(&config)?;
         }
         Some(Commands::Workspace) => {
-            println!("Workspace command executed!");
+            cmd::workspace::run(&config)?;
         }
     }
+
+    Ok(())
 }
