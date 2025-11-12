@@ -1,6 +1,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use anyhow::{Context, Result};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -10,6 +11,9 @@ pub struct Session {
     pub name: Option<String>,
     pub description: Option<String>,
     pub repo: Option<String>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub last_opened: Option<DateTime<Utc>>,
 }
 
 pub type SessionMap = HashMap<String, Session>;

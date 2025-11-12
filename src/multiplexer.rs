@@ -18,6 +18,12 @@ impl Multiplexer {
         }
     }
 
+    pub fn delete(&self, session: &Session) -> Result<()> {
+        match self {
+            Multiplexer::Zellij => self.delete_zellij(session),
+        }
+    }
+
     fn open_zellij(&self, session: &Session) -> Result<()> {
         // Check if we're already inside a Zellij session
         if std::env::var("ZELLIJ").is_ok() {
@@ -46,6 +52,32 @@ impl Multiplexer {
 
         if !status.success() {
             anyhow::bail!("Zellij exited with non-zero status");
+        }
+
+        Ok(())
+    }
+
+    fn delete_zellij(&self, session: &Session) -> Result<()> {
+        // Convert session ID to Zellij-compatible session name
+        let session_name = Self::zellij_session_name(&session.id);
+
+        println!("Deleting Zellij session: {}", session_name);
+
+        // Build the command to delete zellij session
+        let mut cmd = Command::new("zellij");
+        cmd.arg("delete-session").arg(&session_name);
+
+        // Execute zellij delete
+        let output = cmd
+            .output()
+            .context("Failed to execute zellij delete-session command")?;
+
+        // It's okay if the session doesn't exist in zellij, just continue
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            println!("Warning: Could not delete Zellij session: {}", stderr);
+        } else {
+            println!("Deleted Zellij session: {}", session_name);
         }
 
         Ok(())

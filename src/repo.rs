@@ -75,4 +75,18 @@ impl Repo {
 
         Ok(())
     }
+
+    // Delete a worktree for this repo
+    pub fn delete_worktree(&self, worktree_path: &std::path::Path) -> Result<()> {
+        let primary_path = self.path.join("primary");
+
+        // Delegate to the specific repo type
+        match &self.repo {
+            RepoType::Git(git_repo) => {
+                git_repo.delete_worktree(&primary_path, worktree_path)?;
+            }
+        }
+
+        Ok(())
+    }
 }

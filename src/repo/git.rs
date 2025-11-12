@@ -109,4 +109,33 @@ impl GitRepo {
 
         Ok(())
     }
+
+    pub fn delete_worktree(
+        &self,
+        repo_path: &std::path::Path,
+        worktree_path: &std::path::Path,
+    ) -> Result<()> {
+        println!("Deleting worktree at: {}", worktree_path.display());
+
+        let mut cmd = Command::new("git");
+        cmd.arg("-C")
+            .arg(repo_path)
+            .arg("worktree")
+            .arg("remove")
+            .arg(worktree_path);
+
+        // Execute the worktree remove command
+        let output = cmd
+            .output()
+            .context("Failed to execute git worktree remove command")?;
+
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            bail!("Git worktree remove failed: {}", stderr);
+        }
+
+        println!("Successfully deleted worktree");
+
+        Ok(())
+    }
 }

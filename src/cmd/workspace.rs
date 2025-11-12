@@ -1,4 +1,5 @@
 use anyhow::{Result, bail};
+use chrono::Utc;
 use inquire::{Select, Text};
 
 use crate::{config::Config, session::Session, util::truncate_path};
@@ -60,13 +61,14 @@ pub fn run(config: &Config) -> Result<()> {
     // Generate session ID from truncated path
     let session_id = truncate_path(&workspace_path);
 
-    // Create session
+    // Create session with initial timestamp
     let session = Session {
         id: session_id.clone(),
         path: workspace_path,
         name: Some(workspace_name.clone()),
         description,
         repo: Some(selected_repo_name.to_string()),
+        last_opened: Some(Utc::now()),
     };
 
     // Load existing sessions, add new one, and save
@@ -75,6 +77,10 @@ pub fn run(config: &Config) -> Result<()> {
     Session::save_all(&sessions)?;
 
     println!("Session '{}' created successfully!", session_id);
+
+    // Open the newly created session
+    let created_session = sessions.get(&session_id).expect("Session should exist");
+    config.multiplexer.open(created_session)?;
 
     Ok(())
 }

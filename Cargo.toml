@@ -13,3 +13,4 @@ dirs = "5.0"
 anyhow = "1.0"
 inquire = "0.9.1"
 shellexpand = "3.1"
+chrono = { version = "0.4", features = ["serde"] }
