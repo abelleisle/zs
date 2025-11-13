@@ -58,7 +58,8 @@ pub fn run(config: &Config) -> Result<()> {
     let workspace_path = selected_repo.path.join("workspaces").join(&workspace_name);
 
     let workspace = Workspace {
-        repo: selected_repo_name.to_string(),
+        repo_name: selected_repo_name.to_string(),
+        repo: Some(selected_repo.clone()),
         branch: branch_name,
         path: workspace_path,
     };
@@ -97,7 +98,7 @@ pub fn run(config: &Config) -> Result<()> {
     };
 
     // Load existing sessions, add new one, and save
-    let mut sessions = Session::load_all()?;
+    let mut sessions = Session::load_all(config)?;
     sessions.insert(session_id.clone(), session);
     Session::save_all(&sessions)?;
 

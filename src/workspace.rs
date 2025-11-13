@@ -1,18 +1,22 @@
 use std::path::PathBuf;
 
-use anyhow::{Result, bail};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-use crate::{config::Config, util::default_true};
+use crate::{config::Config, repo::Repo, util::default_true};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Workspace {
-    pub repo: String,
+    pub repo_name: String,
+
+    #[serde(skip)]
+    pub repo: Option<Repo>,
+
     pub branch: String,
     pub path: PathBuf,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct WorkspaceSettings {
     #[serde(default = "default_true")]
     pub submodules: bool,
@@ -22,12 +26,27 @@ pub struct WorkspaceSettings {
 }
 
 impl Workspace {
-    pub fn delete(&self, config: &Config) -> Result<()> {
-        if let Some(repo) = config.repos.get(&self.repo) {
-            println!("Deleting worktree...");
-            repo.delete_worktree(self)?;
-        }
+    /// Hydrate the workspace with the full Repo object from Config
+    pub fn hydrate(&mut self, config: &Config) -> Result<()> {
+        let repo = config
+            .repos
+            .get(&self.repo_name)
+            .ok_or_else(|| anyhow::anyhow!("Repo '{}' not found in config", self.repo_name))?;
+        self.repo = Some(repo.clone());
+        Ok(())
+    }
 
-        bail!("Cannot delete workspace, because repo doesn't exists");
+    /// Get a reference to the repo, returning an error if not hydrated
+    pub fn get_repo(&self) -> Result<&Repo> {
+        self.repo
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Workspace not hydrated with repo"))
+    }
+
+    pub fn delete(&self) -> Result<()> {
+        println!("Deleting worktree...");
+        let repo = self.get_repo()?;
+        repo.delete_worktree(self)?;
+        Ok(())
     }
 }

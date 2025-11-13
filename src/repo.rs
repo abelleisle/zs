@@ -10,7 +10,7 @@ use crate::{
     workspace::{Workspace, WorkspaceSettings},
 };
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Repo {
     pub path: PathBuf,
 
@@ -24,7 +24,7 @@ pub struct Repo {
     pub direnv: Option<Direnv>,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum RepoType {
     Git(git::GitRepo),

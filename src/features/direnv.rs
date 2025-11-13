@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::workspace::Workspace;
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Direnv {
     #[serde(default)]
     trust: bool,

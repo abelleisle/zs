@@ -7,7 +7,7 @@ use inquire::{Confirm, Select, Text};
 use crate::{config::Config, session::Session, util::truncate_path};
 
 pub fn open(config: &Config) -> Result<()> {
-    let mut sessions = Session::load_all()?;
+    let mut sessions = Session::load_all(config)?;
 
     if sessions.is_empty() {
         bail!(
@@ -86,7 +86,7 @@ pub fn new(config: &Config, path: PathBuf) -> Result<()> {
     let session_id = truncate_path(&abs_path);
 
     // Check if session already exists
-    let mut sessions = Session::load_all()?;
+    let mut sessions = Session::load_all(config)?;
     if sessions.contains_key(&session_id) {
         bail!("Session already exists with ID: {}", session_id);
     }
@@ -131,7 +131,7 @@ pub fn new(config: &Config, path: PathBuf) -> Result<()> {
 }
 
 pub fn remove(config: &Config) -> Result<()> {
-    let mut sessions = Session::load_all()?;
+    let mut sessions = Session::load_all(config)?;
 
     if sessions.is_empty() {
         bail!("No sessions found.");
@@ -192,7 +192,7 @@ pub fn remove(config: &Config) -> Result<()> {
 
     // Delete worktree if this session belongs to a repo
     if let Some(workspace) = &session_to_delete.workspace {
-        workspace.delete(config)?;
+        workspace.delete()?;
     }
 
     // Delete session from multiplexer

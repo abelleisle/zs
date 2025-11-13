@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{util::default_true, workspace::Workspace};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct GitRepo {
     // Fields for GitRepo
     pub url: String,

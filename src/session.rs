@@ -4,7 +4,7 @@ use anyhow::{Context, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-use crate::workspace::Workspace;
+use crate::{config::Config, workspace::Workspace};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Session {
@@ -21,7 +21,7 @@ pub struct Session {
 pub type SessionMap = HashMap<String, Session>;
 
 impl Session {
-    pub fn load_all() -> Result<SessionMap> {
+    pub fn load_all(config: &Config) -> Result<SessionMap> {
         let sessions_path = Self::sessions_path()?;
 
         if !sessions_path.exists() {
@@ -33,8 +33,16 @@ impl Session {
             sessions_path.display()
         ))?;
 
-        let sessions: SessionMap =
+        let mut sessions: SessionMap =
             serde_json::from_str(&contents).context("Failed to parse sessions file")?;
+
+        // Hydrate all workspaces with their repo objects
+        for session in sessions.values_mut() {
+            if let Some(workspace) = &mut session.workspace {
+                // Ignore errors for missing repos (they might have been removed from config)
+                let _ = workspace.hydrate(config);
+            }
+        }
 
         Ok(sessions)
     }
