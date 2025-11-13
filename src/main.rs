@@ -9,10 +9,9 @@ mod features;
 mod multiplexer;
 mod repo;
 mod session;
+mod state;
 mod util;
 mod workspace;
-
-use config::Config;
 
 #[derive(Parser)]
 #[command(name = "zs")]
@@ -55,29 +54,26 @@ enum SessionCommands {
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
-    let config = Config::load()?;
-
-    println!("Loaded config from: {}", Config::config_path()?.display());
-    println!("Found {} repos", config.repos.len());
+    let state = state::State::new();
 
     match cli.command {
         None => {
             // Default to session open when no command is provided
-            cmd::session::open(&config)?;
+            cmd::session::open(&state)?;
         }
         Some(Commands::Session { command }) => match command {
             Some(SessionCommands::Open) | None => {
-                cmd::session::open(&config)?;
+                cmd::session::open(&state)?;
             }
             Some(SessionCommands::New { path }) => {
-                cmd::session::new(&config, path)?;
+                cmd::session::new(&state, path)?;
             }
             Some(SessionCommands::Remove) => {
-                cmd::session::remove(&config)?;
+                cmd::session::remove(&state)?;
             }
         },
         Some(Commands::Workspace) => {
-            cmd::workspace::run(&config)?;
+            cmd::workspace::run(&state)?;
         }
     }
 

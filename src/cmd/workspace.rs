@@ -2,21 +2,22 @@ use anyhow::{Result, bail};
 use chrono::Utc;
 use inquire::{Select, Text};
 
-use crate::{config::Config, session::Session, util::truncate_path, workspace::Workspace};
+use crate::{session::Session, state::State, util::truncate_path, workspace::Workspace};
 
-pub fn run(config: &Config) -> Result<()> {
+pub fn run(state: &State) -> Result<()> {
     // Check if there are any repos defined
-    if config.repos.is_empty() {
+    if state.config().repos.is_empty() {
         bail!("No repos defined in config. Please add repos to ~/.config/zs/zs.toml");
     }
 
     // Get list of repo names for selection
-    let repo_names: Vec<&String> = config.repos.keys().collect();
+    let repo_names: Vec<&String> = state.config().repos.keys().collect();
 
     // Prompt user to select a repo
     let selected_repo_name = Select::new("Select a workspace:", repo_names).prompt()?;
 
-    let selected_repo = config
+    let selected_repo = state
+        .config()
         .repos
         .get(selected_repo_name)
         .expect("Selected repo should exist");
@@ -75,7 +76,7 @@ pub fn run(config: &Config) -> Result<()> {
         selected_repo.init_submodules(&workspace)?;
     }
 
-    // Setup direnv if configured
+    // Setup direnv if state.config()ured
     if let Some(direnv) = &selected_repo.direnv {
         direnv.create(&workspace)?;
         direnv.trust(&workspace)?;
@@ -98,15 +99,15 @@ pub fn run(config: &Config) -> Result<()> {
     };
 
     // Load existing sessions, add new one, and save
-    let mut sessions = Session::load_all(config)?;
+    let mut sessions = state.sessions_mut();
     sessions.insert(session_id.clone(), session);
-    Session::save_all(&sessions)?;
+    state.save()?;
 
     println!("Session '{}' created successfully!", session_id);
 
     // Open the newly created session
     let created_session = sessions.get(&session_id).expect("Session should exist");
-    config.multiplexer.open(created_session)?;
+    state.config().multiplexer.open(created_session)?;
 
     Ok(())
 }

@@ -4,10 +4,10 @@ use anyhow::{Result, bail};
 use chrono::Utc;
 use inquire::{Confirm, Select, Text};
 
-use crate::{config::Config, session::Session, util::truncate_path};
+use crate::{session::Session, state::State, util::truncate_path};
 
-pub fn open(config: &Config) -> Result<()> {
-    let mut sessions = Session::load_all(config)?;
+pub fn open(state: &State) -> Result<()> {
+    let sessions = state.sessions();
 
     if sessions.is_empty() {
         bail!(
@@ -51,25 +51,28 @@ pub fn open(config: &Config) -> Result<()> {
         .expect("Selected session should exist");
 
     // Update last_opened timestamp
-    if let Some(session) = sessions.get_mut(&selected_key) {
-        session.last_opened = Some(Utc::now());
+    {
+        let mut sessions = state.sessions_mut();
+        if let Some(session) = sessions.get_mut(&selected_key) {
+            session.last_opened = Some(Utc::now());
+        }
+        // Save updated sessions
+        state.save()?;
     }
 
-    // Save updated sessions
-    Session::save_all(&sessions)?;
-
     // Get the session to open (immutable reference after saving)
+    let sessions = state.sessions();
     let selected_session = sessions
         .get(&selected_key)
         .expect("Selected session should exist");
 
     // Open the session using the configured multiplexer
-    config.multiplexer.open(selected_session)?;
+    state.config().multiplexer.open(selected_session)?;
 
     Ok(())
 }
 
-pub fn new(config: &Config, path: PathBuf) -> Result<()> {
+pub fn new(state: &State, path: PathBuf) -> Result<()> {
     // Ensure the path exists
     if !path.exists() {
         bail!("Path does not exist: {}", path.display());
@@ -86,7 +89,7 @@ pub fn new(config: &Config, path: PathBuf) -> Result<()> {
     let session_id = truncate_path(&abs_path);
 
     // Check if session already exists
-    let mut sessions = Session::load_all(config)?;
+    let mut sessions = state.sessions_mut();
     if sessions.contains_key(&session_id) {
         bail!("Session already exists with ID: {}", session_id);
     }
@@ -119,19 +122,19 @@ pub fn new(config: &Config, path: PathBuf) -> Result<()> {
 
     // Save session
     sessions.insert(session_id.clone(), session);
-    Session::save_all(&sessions)?;
+    state.save()?;
 
     println!("Session '{}' created successfully!", session_id);
 
     // Open the newly created session
     let created_session = sessions.get(&session_id).expect("Session should exist");
-    config.multiplexer.open(created_session)?;
+    state.config().multiplexer.open(created_session)?;
 
     Ok(())
 }
 
-pub fn remove(config: &Config) -> Result<()> {
-    let mut sessions = Session::load_all(config)?;
+pub fn remove(state: &State) -> Result<()> {
+    let mut sessions = state.sessions_mut();
 
     if sessions.is_empty() {
         bail!("No sessions found.");
@@ -196,11 +199,11 @@ pub fn remove(config: &Config) -> Result<()> {
     }
 
     // Delete session from multiplexer
-    config.multiplexer.delete(session_to_delete)?;
+    state.config().multiplexer.delete(session_to_delete)?;
 
     // Remove from session list
     sessions.remove(&selected_key);
-    Session::save_all(&sessions)?;
+    state.save()?;
 
     println!("Session '{}' deleted successfully!", selected_key);
 
