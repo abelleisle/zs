@@ -62,6 +62,12 @@
             entry = "${treefmtEval.config.build.wrapper}/bin/treefmt --fail-on-change";
           };
 
+          # Run rustfmt for Rust code formatting
+          rustfmt = {
+            enable = true;
+            entry = "${rustToolchain}/bin/cargo-fmt fmt";
+          };
+
           # Run clippy for linting
           clippy = {
             enable = true;
