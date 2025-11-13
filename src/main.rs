@@ -15,6 +15,7 @@ use config::Config;
 #[derive(Parser)]
 #[command(name = "zs")]
 #[command(about = "Multiplexer session manager", long_about = None)]
+#[command(version)]
 struct Cli {
     #[command(subcommand)]
     command: Option<Commands>,
