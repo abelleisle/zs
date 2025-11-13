@@ -7,7 +7,7 @@ use inquire::{Confirm, Select, Text};
 use crate::{session::Session, state::State, util::truncate_path};
 
 pub fn open(state: &State) -> Result<()> {
-    let sessions = state.sessions();
+    let mut sessions = state.sessions_mut();
 
     if sessions.is_empty() {
         bail!(
@@ -50,24 +50,28 @@ pub fn open(state: &State) -> Result<()> {
         .map(|(_, (key, _))| (*key).clone())
         .expect("Selected session should exist");
 
-    // Update last_opened timestamp
-    {
-        let mut sessions = state.sessions_mut();
-        if let Some(session) = sessions.get_mut(&selected_key) {
-            session.last_opened = Some(Utc::now());
-        }
-        // Save updated sessions
-        state.save()?;
+    // Get target session and open it
+    if let Some(session) = sessions.get_mut(&selected_key) {
+        session.last_opened = Some(Utc::now());
+    } else {
+        bail!("Can't update session {} as it doesn't exist", selected_key);
     }
 
-    // Get the session to open (immutable reference after saving)
-    let sessions = state.sessions();
-    let selected_session = sessions
-        .get(&selected_key)
-        .expect("Selected session should exist");
+    // Drop the mutable borrow before calling state.save()
+    drop(sessions);
+
+    // Save updated session (we updated timestamp)
+    state.save()?;
 
     // Open the session using the configured multiplexer
-    state.config().multiplexer.open(selected_session)?;
+    if let Some(session) = state.sessions().get(&selected_key) {
+        state.config().multiplexer.open(session)?;
+    } else {
+        bail!(
+            "Can't connect to the session {} as it doesn't exist",
+            selected_key
+        );
+    }
 
     Ok(())
 }
@@ -122,13 +126,19 @@ pub fn new(state: &State, path: PathBuf) -> Result<()> {
 
     // Save session
     sessions.insert(session_id.clone(), session);
+
+    drop(sessions);
+
     state.save()?;
 
     println!("Session '{}' created successfully!", session_id);
 
     // Open the newly created session
-    let created_session = sessions.get(&session_id).expect("Session should exist");
-    state.config().multiplexer.open(created_session)?;
+    {
+        let sessions = state.sessions();
+        let created_session = sessions.get(&session_id).expect("Session should exist");
+        state.config().multiplexer.open(created_session)?;
+    }
 
     Ok(())
 }
@@ -203,6 +213,10 @@ pub fn remove(state: &State) -> Result<()> {
 
     // Remove from session list
     sessions.remove(&selected_key);
+
+    drop(sessions);
+
+    // We've deleted a session, so we should save the session list
     state.save()?;
 
     println!("Session '{}' deleted successfully!", selected_key);
