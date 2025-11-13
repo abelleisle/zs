@@ -67,6 +67,19 @@ pub fn run(config: &Config) -> Result<()> {
     selected_repo.create_worktree(&workspace)?;
     println!("Created worktree at: {}", workspace.path.display());
 
+    // Initialize submodules if enabled in workspace settings
+    if let Some(workspace_settings) = &selected_repo.workspace
+        && workspace_settings.submodules
+    {
+        selected_repo.init_submodules(&workspace)?;
+    }
+
+    // Setup direnv if configured
+    if let Some(direnv) = &selected_repo.direnv {
+        direnv.create(&workspace)?;
+        direnv.trust(&workspace)?;
+    }
+
     // Execute workspace hook if defined
     selected_repo.execute_workspace_hook(&workspace)?;
 

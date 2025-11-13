@@ -5,7 +5,10 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
-use crate::{util::default_true, workspace::Workspace};
+use crate::{
+    features::direnv::Direnv,
+    workspace::{Workspace, WorkspaceSettings},
+};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Repo {
@@ -14,6 +17,7 @@ pub struct Repo {
     #[serde(flatten)]
     pub repo: RepoType,
 
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub workspace: Option<WorkspaceSettings>,
 
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -24,24 +28,6 @@ pub struct Repo {
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum RepoType {
     Git(git::GitRepo),
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct WorkspaceSettings {
-    #[serde(default)]
-    submodules: bool,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    hook: Option<String>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct Direnv {
-    #[serde(default = "default_true")]
-    enable: bool,
-
-    #[serde(skip_serializing_if = "Option::is_none")]
-    envrc: Option<String>,
 }
 
 impl Repo {
@@ -145,6 +131,18 @@ impl Repo {
         match &self.repo {
             RepoType::Git(git_repo) => {
                 git_repo.update(&primary_path)?;
+            }
+        }
+
+        Ok(())
+    }
+
+    // Initialize submodules in a workspace
+    pub fn init_submodules(&self, workspace: &Workspace) -> Result<()> {
+        // Delegate to the specific repo type
+        match &self.repo {
+            RepoType::Git(git_repo) => {
+                git_repo.init_submodules(workspace)?;
             }
         }
 

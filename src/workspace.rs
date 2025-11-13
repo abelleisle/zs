@@ -3,13 +3,22 @@ use std::path::PathBuf;
 use anyhow::{Result, bail};
 use serde::{Deserialize, Serialize};
 
-use crate::config::Config;
+use crate::{config::Config, util::default_true};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Workspace {
     pub repo: String,
     pub branch: String,
     pub path: PathBuf,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct WorkspaceSettings {
+    #[serde(default = "default_true")]
+    pub submodules: bool,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hook: Option<String>,
 }
 
 impl Workspace {

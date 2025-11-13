@@ -202,4 +202,32 @@ impl GitRepo {
 
         Ok(())
     }
+
+    pub fn init_submodules(&self, workspace: &Workspace) -> Result<()> {
+        println!("Initializing submodules...");
+
+        let mut cmd = Command::new("git");
+        cmd.arg("-C")
+            .arg(&workspace.path)
+            .arg("submodule")
+            .arg("update")
+            .arg("--init")
+            .arg("--recursive");
+
+        // Use status() instead of output() to inherit stdio and show live output
+        let status = cmd
+            .status()
+            .context("Failed to execute git submodule update command")?;
+
+        if !status.success() {
+            bail!(
+                "Git submodule update failed with exit code: {:?}",
+                status.code()
+            );
+        }
+
+        println!("Successfully initialized submodules");
+
+        Ok(())
+    }
 }
