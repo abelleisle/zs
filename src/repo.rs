@@ -5,21 +5,43 @@ use std::path::PathBuf;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
+use crate::{util::default_true, workspace::Workspace};
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Repo {
     pub path: PathBuf,
 
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub workspace_hook: Option<String>,
-
     #[serde(flatten)]
     pub repo: RepoType,
+
+    pub workspace: Option<WorkspaceSettings>,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub direnv: Option<Direnv>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum RepoType {
     Git(git::GitRepo),
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct WorkspaceSettings {
+    #[serde(default)]
+    submodules: bool,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    hook: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Direnv {
+    #[serde(default = "default_true")]
+    enable: bool,
+
+    #[serde(skip_serializing_if = "Option::is_none")]
+    envrc: Option<String>,
 }
 
 impl Repo {
@@ -62,17 +84,13 @@ impl Repo {
     }
 
     // Create a worktree for this repo
-    pub fn create_worktree(
-        &self,
-        branch_name: &str,
-        worktree_path: &std::path::Path,
-    ) -> Result<()> {
+    pub fn create_worktree(&self, workspace: &Workspace) -> Result<()> {
         let primary_path = self.path.join("primary");
 
         // Delegate to the specific repo type
         match &self.repo {
             RepoType::Git(git_repo) => {
-                git_repo.create_worktree(&primary_path, branch_name, worktree_path)?;
+                git_repo.create_worktree(&primary_path, workspace)?;
             }
         }
 
@@ -80,13 +98,13 @@ impl Repo {
     }
 
     // Delete a worktree for this repo
-    pub fn delete_worktree(&self, worktree_path: &std::path::Path) -> Result<()> {
+    pub fn delete_worktree(&self, workspace: &Workspace) -> Result<()> {
         let primary_path = self.path.join("primary");
 
         // Delegate to the specific repo type
         match &self.repo {
             RepoType::Git(git_repo) => {
-                git_repo.delete_worktree(&primary_path, worktree_path)?;
+                git_repo.delete_worktree(&primary_path, workspace)?;
             }
         }
 
@@ -94,21 +112,20 @@ impl Repo {
     }
 
     // Execute workspace hook if defined
-    pub fn execute_workspace_hook(&self, workspace_path: &std::path::Path) -> Result<()> {
-        if let Some(hook) = &self.workspace_hook {
+    pub fn execute_workspace_hook(&self, workspace: &Workspace) -> Result<()> {
+        if let Some(workspace_settings) = &self.workspace
+            && let Some(hook) = &workspace_settings.hook
+        {
             println!("\n=== Executing workspace hook ===");
-            println!("Working directory: {}", workspace_path.display());
+            println!("Working directory: {}", workspace.path.display());
             println!("\n{}", hook);
             println!("\n================================\n");
 
             let mut cmd = std::process::Command::new("sh");
-            cmd.arg("-c")
-                .arg(hook)
-                .current_dir(workspace_path);
+            cmd.arg("-c").arg(hook).current_dir(&workspace.path);
 
             // Use status() instead of output() to inherit stdio and show live output
-            let status = cmd.status()
-                .context("Failed to execute workspace hook")?;
+            let status = cmd.status().context("Failed to execute workspace hook")?;
 
             if !status.success() {
                 anyhow::bail!("Workspace hook failed with exit code: {:?}", status.code());

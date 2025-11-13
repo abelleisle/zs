@@ -54,6 +54,10 @@ pub fn truncate_path(path: &Path) -> String {
     result
 }
 
+pub fn default_true() -> bool {
+    true
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;

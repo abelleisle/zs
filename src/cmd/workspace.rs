@@ -2,7 +2,7 @@ use anyhow::{Result, bail};
 use chrono::Utc;
 use inquire::{Select, Text};
 
-use crate::{config::Config, session::Session, util::truncate_path};
+use crate::{config::Config, session::Session, util::truncate_path, workspace::Workspace};
 
 pub fn run(config: &Config) -> Result<()> {
     // Check if there are any repos defined
@@ -57,23 +57,29 @@ pub fn run(config: &Config) -> Result<()> {
     // Create workspace path: <repo.path>/workspaces/<name>
     let workspace_path = selected_repo.path.join("workspaces").join(&workspace_name);
 
+    let workspace = Workspace {
+        repo: selected_repo_name.to_string(),
+        branch: branch_name,
+        path: workspace_path,
+    };
+
     // Create the worktree
-    selected_repo.create_worktree(&branch_name, &workspace_path)?;
-    println!("Created worktree at: {}", workspace_path.display());
+    selected_repo.create_worktree(&workspace)?;
+    println!("Created worktree at: {}", workspace.path.display());
 
     // Execute workspace hook if defined
-    selected_repo.execute_workspace_hook(&workspace_path)?;
+    selected_repo.execute_workspace_hook(&workspace)?;
 
     // Generate session ID from truncated path
-    let session_id = truncate_path(&workspace_path);
+    let session_id = truncate_path(&workspace.path);
 
     // Create session with initial timestamp
     let session = Session {
         id: session_id.clone(),
-        path: workspace_path,
+        path: workspace.path.clone(),
         name: Some(workspace_name.clone()),
         description,
-        repo: Some(selected_repo_name.to_string()),
+        workspace: Some(workspace),
         last_opened: Some(Utc::now()),
     };
 

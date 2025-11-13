@@ -113,7 +113,7 @@ pub fn new(config: &Config, path: PathBuf) -> Result<()> {
         path: abs_path,
         name: Some(session_name),
         description,
-        repo: None,
+        workspace: None,
         last_opened: Some(Utc::now()),
     };
 
@@ -191,11 +191,8 @@ pub fn remove(config: &Config) -> Result<()> {
         .expect("Selected session should exist");
 
     // Delete worktree if this session belongs to a repo
-    if let Some(repo_name) = &session_to_delete.repo
-        && let Some(repo) = config.repos.get(repo_name)
-    {
-        println!("Deleting worktree...");
-        repo.delete_worktree(&session_to_delete.path)?;
+    if let Some(workspace) = &session_to_delete.workspace {
+        workspace.delete(config)?;
     }
 
     // Delete session from multiplexer

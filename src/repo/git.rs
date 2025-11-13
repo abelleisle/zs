@@ -4,9 +4,7 @@ use anyhow::{Context, Result, bail};
 use inquire::Confirm;
 use serde::{Deserialize, Serialize};
 
-fn default_true() -> bool {
-    true
-}
+use crate::{util::default_true, workspace::Workspace};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GitRepo {
@@ -70,17 +68,16 @@ impl GitRepo {
     pub fn create_worktree(
         &self,
         repo_path: &std::path::Path,
-        branch_name: &str,
-        worktree_path: &std::path::Path,
+        workspace: &Workspace,
     ) -> Result<()> {
         println!(
             "Creating worktree with branch '{}' at: {}",
-            branch_name,
-            worktree_path.display()
+            workspace.branch,
+            workspace.path.display()
         );
 
         // Ensure parent directory exists
-        if let Some(parent) = worktree_path.parent() {
+        if let Some(parent) = workspace.path.parent() {
             std::fs::create_dir_all(parent).context("Failed to create workspaces directory")?;
         }
 
@@ -89,9 +86,9 @@ impl GitRepo {
             .arg(repo_path)
             .arg("worktree")
             .arg("add")
-            .arg(worktree_path)
+            .arg(&workspace.path)
             .arg("-b")
-            .arg(branch_name);
+            .arg(&workspace.branch);
 
         // Execute the worktree add command
         let output = cmd
@@ -105,7 +102,7 @@ impl GitRepo {
 
         println!(
             "Successfully created worktree with branch '{}'",
-            branch_name
+            workspace.branch
         );
 
         Ok(())
@@ -114,16 +111,16 @@ impl GitRepo {
     pub fn delete_worktree(
         &self,
         repo_path: &std::path::Path,
-        worktree_path: &std::path::Path,
+        workspace: &Workspace,
     ) -> Result<()> {
-        println!("Deleting worktree at: {}", worktree_path.display());
+        println!("Deleting worktree at: {}", workspace.path.display());
 
         let mut cmd = Command::new("git");
         cmd.arg("-C")
             .arg(repo_path)
             .arg("worktree")
             .arg("remove")
-            .arg(worktree_path);
+            .arg(&workspace.path);
 
         // Execute the worktree remove command
         let output = cmd
@@ -152,7 +149,7 @@ impl GitRepo {
                 .arg("worktree")
                 .arg("remove")
                 .arg("--force")
-                .arg(worktree_path);
+                .arg(&workspace.path);
 
             let force_output = force_cmd
                 .output()
@@ -164,6 +161,19 @@ impl GitRepo {
             }
         }
 
+        {
+            let mut cmd = Command::new("git");
+            cmd.arg("-C")
+                .arg(repo_path)
+                .arg("branch")
+                .arg("-d")
+                .arg(&workspace.branch);
+
+            // Execute the worktree remove command
+            cmd.output()
+                .context("Failed to remove old branch from primary repo")?;
+        }
+
         println!("Successfully deleted worktree");
 
         Ok(())
@@ -173,14 +183,10 @@ impl GitRepo {
         println!("Updating repository at: {}", repo_path.display());
 
         let mut cmd = Command::new("git");
-        cmd.arg("-C")
-            .arg(repo_path)
-            .arg("pull");
+        cmd.arg("-C").arg(repo_path).arg("pull");
 
         // Execute the pull command
-        let output = cmd
-            .output()
-            .context("Failed to execute git pull command")?;
+        let output = cmd.output().context("Failed to execute git pull command")?;
 
         if !output.status.success() {
             let stderr = String::from_utf8_lossy(&output.stderr);

@@ -9,6 +9,7 @@ mod multiplexer;
 mod repo;
 mod session;
 mod util;
+mod workspace;
 
 use config::Config;
 
