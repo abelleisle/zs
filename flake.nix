@@ -33,12 +33,20 @@
     pre-commit-hooks,
   }:
     flake-utils.lib.eachDefaultSystem (system: let
-      pkgs = nixpkgs.legacyPackages.${system};
+      # pkgs = nixpkgs.legacyPackages.${system};
+      pkgs = import nixpkgs {
+        inherit system;
+        overlays = [fenix.overlays.default];
+        rustPlatform = nixpkgs.makeRustPlatform {
+          cargo = rustToolchain;
+          rust = rustToolchain;
+        };
+      };
 
       # Create Rust toolchain from fenix based on rust-toolchain.toml
       rustToolchain = fenix.packages.${system}.fromToolchainFile {
         file = ./rust-toolchain.toml;
-        sha256 = "sha256-CwS2GOhrcw3iGwM1v4BNT+PZGiIobPHC5XeSzQ78dFs=";
+        sha256 = "sha256-x+EWymRPcdfpK3I1N+Rr3RE0ld/KmNPEJGDnyxFyByE=";
       };
 
       # treefmt configuration
@@ -87,6 +95,7 @@
           # Rust toolchain from fenix
           rustToolchain
           rust-analyzer
+          rustPlatform.bindgenHook
 
           # Formatting tools
           treefmtEval.config.build.wrapper
