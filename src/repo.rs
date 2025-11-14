@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     features::direnv::Direnv,
+    util::get_user_shell,
     workspace::{Workspace, WorkspaceSettings},
 };
 
@@ -107,7 +108,8 @@ impl Repo {
             println!("\n{}", hook);
             println!("\n================================\n");
 
-            let mut cmd = std::process::Command::new("sh");
+            let shell = get_user_shell();
+            let mut cmd = std::process::Command::new(shell);
             cmd.arg("-c").arg(hook).current_dir(&workspace.path);
 
             // Use status() instead of output() to inherit stdio and show live output

@@ -58,6 +58,11 @@ pub fn default_true() -> bool {
     true
 }
 
+/// Get the user's shell from the SHELL environment variable, falling back to "sh"
+pub fn get_user_shell() -> String {
+    std::env::var("SHELL").unwrap_or_else(|_| "sh".to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::PathBuf;
