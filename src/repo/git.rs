@@ -65,6 +65,42 @@ impl GitRepo {
         Ok(())
     }
 
+    fn branch_exists(&self, repo_path: &std::path::Path, branch_name: &str) -> Result<bool> {
+        // Check if branch exists locally or remotely
+        let mut cmd = Command::new("git");
+        cmd.arg("-C")
+            .arg(repo_path)
+            .arg("show-ref")
+            .arg("--verify")
+            .arg("--quiet")
+            .arg(format!("refs/heads/{}", branch_name));
+
+        let output = cmd
+            .output()
+            .context("Failed to execute git show-ref command")?;
+
+        // If local branch exists, return true
+        if output.status.success() {
+            return Ok(true);
+        }
+
+        // Check if remote branch exists
+        let mut remote_cmd = Command::new("git");
+        remote_cmd
+            .arg("-C")
+            .arg(repo_path)
+            .arg("show-ref")
+            .arg("--verify")
+            .arg("--quiet")
+            .arg(format!("refs/remotes/origin/{}", branch_name));
+
+        let remote_output = remote_cmd
+            .output()
+            .context("Failed to execute git show-ref command for remote")?;
+
+        Ok(remote_output.status.success())
+    }
+
     pub fn create_worktree(
         &self,
         repo_path: &std::path::Path,
@@ -81,14 +117,28 @@ impl GitRepo {
             std::fs::create_dir_all(parent).context("Failed to create workspaces directory")?;
         }
 
+        // Check if branch exists
+        let branch_exists = self.branch_exists(repo_path, &workspace.branch)?;
+
         let mut cmd = Command::new("git");
         cmd.arg("-C")
             .arg(repo_path)
             .arg("worktree")
             .arg("add")
-            .arg(&workspace.path)
-            .arg("-b")
-            .arg(&workspace.branch);
+            .arg(&workspace.path);
+
+        if branch_exists {
+            // Branch exists, just checkout without creating
+            println!("Branch '{}' exists, checking it out...", workspace.branch);
+            cmd.arg(&workspace.branch);
+        } else {
+            // Branch doesn't exist, create it
+            println!(
+                "Branch '{}' doesn't exist, creating it...",
+                workspace.branch
+            );
+            cmd.arg("-b").arg(&workspace.branch);
+        }
 
         // Execute the worktree add command
         let output = cmd

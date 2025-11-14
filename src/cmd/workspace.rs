@@ -69,22 +69,6 @@ pub fn run(state: &State) -> Result<()> {
     selected_repo.create_worktree(&workspace)?;
     println!("Created worktree at: {}", workspace.path.display());
 
-    // Initialize submodules if enabled in workspace settings
-    if let Some(workspace_settings) = &selected_repo.workspace
-        && workspace_settings.submodules
-    {
-        selected_repo.init_submodules(&workspace)?;
-    }
-
-    // Setup direnv if state.config()ured
-    if let Some(direnv) = &selected_repo.direnv {
-        direnv.create(&workspace)?;
-        direnv.trust(&workspace)?;
-    }
-
-    // Execute workspace hook if defined
-    selected_repo.execute_workspace_hook(&workspace)?;
-
     // Generate session ID from truncated path
     let session_id = truncate_path(&workspace.path);
 
@@ -94,20 +78,31 @@ pub fn run(state: &State) -> Result<()> {
         path: workspace.path.clone(),
         name: Some(workspace_name.clone()),
         description,
-        workspace: Some(workspace),
+        workspace: Some(workspace.clone()),
         last_opened: Some(Utc::now()),
     };
 
     // Load existing sessions, add new one, and save
-    let mut sessions = state.sessions_mut();
-    sessions.insert(session_id.clone(), session);
-    state.save()?;
+    {
+        let mut sessions = state.sessions_mut();
+        sessions.insert(session_id.clone(), session);
+        drop(sessions); // Explicitly drop to release borrow
+        state.save()?;
+    }
 
     println!("Session '{}' created successfully!", session_id);
 
+    match workspace.setup() {
+        Ok(_) => println!("Workspace setup completed."),
+        Err(e) => println!("Workspace setup encountered an error: {}", e),
+    }
+
     // Open the newly created session
-    let created_session = sessions.get(&session_id).expect("Session should exist");
-    state.config().multiplexer.open(created_session)?;
+    {
+        let sessions = state.sessions();
+        let created_session = sessions.get(&session_id).expect("Session should exist");
+        state.config().multiplexer.open(created_session)?;
+    }
 
     Ok(())
 }

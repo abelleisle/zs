@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{config::Config, repo::Repo, util::default_true};
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Workspace {
     pub repo_name: String,
 
@@ -47,6 +47,31 @@ impl Workspace {
         println!("Deleting worktree...");
         let repo = self.get_repo()?;
         repo.delete_worktree(self)?;
+        Ok(())
+    }
+
+    pub fn setup(&self) -> Result<()> {
+        let selected_repo = self.get_repo()?;
+
+        // Initialize submodules if enabled in workspace settings
+        if let Some(workspace_settings) = &selected_repo.workspace
+            && workspace_settings.submodules
+        {
+            selected_repo.init_submodules(self)?;
+        }
+
+        // Setup direnv if configured
+        if let Some(direnv) = &selected_repo.direnv {
+            direnv.create(self)?;
+            direnv.trust(self)?;
+        }
+
+        // Execute workspace hook if defined
+        match selected_repo.execute_workspace_hook(self) {
+            Ok(_) => {}
+            Err(e) => println!("Failed to execute workspace hook: {}", e),
+        }
+
         Ok(())
     }
 }
