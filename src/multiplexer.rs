@@ -65,7 +65,9 @@ impl Multiplexer {
 
         // Build the command to delete zellij session
         let mut cmd = Command::new("zellij");
-        cmd.arg("delete-session").arg(&session_name);
+        cmd.arg("delete-session") // Delete session command
+            .arg("-f") // Force kill the session if it's running
+            .arg(&session_name); // Target session name
 
         // Execute zellij delete
         let output = cmd
