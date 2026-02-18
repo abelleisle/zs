@@ -1,9 +1,15 @@
 # zs
 
-This is a stub mirror. The full source code for this commit is at:
+This is a stub mirror. The source code lives on Forgejo.
 
-https://git.bitcicle.com/andy/zs/src/commit/3f2ae9ead6d1d6e71ce513a9908244e6a352151d
+**Repository:** https://git.bitcicle.com/andy/zs
 
-To browse or clone the full repository, visit:
+## Branches
 
-https://git.bitcicle.com/andy/zs
+| Branch | Commit | Link |
+|--------|--------|------|
+| `master` | `3f2ae9ead6d1` | [view](https://git.bitcicle.com/andy/zs/src/commit/3f2ae9ead6d1d6e71ce513a9908244e6a352151d) |
+
+---
+
+*Last updated: 2026-02-18 06:24:14 UTC*
